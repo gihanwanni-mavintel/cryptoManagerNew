@@ -105,4 +105,39 @@ export const configApi = {
   },
 };
 
+// Auth API
+export const authApi = {
+  login: async (username: string, password: string): Promise<{ access_token: string; token_type: string }> => {
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+
+    const response = await api.post('/api/auth/login', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  register: async (username: string, password: string): Promise<{ message: string; user: { id: number; username: string; role: string } }> => {
+    const response = await api.post('/api/auth/register', { username, password });
+    return response.data;
+  },
+
+  getCurrentUser: async (): Promise<{ id: number; username: string; role: string }> => {
+    const response = await api.get('/api/auth/me');
+    return response.data;
+  },
+};
+
+// Add auth interceptor for adding token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export default api;

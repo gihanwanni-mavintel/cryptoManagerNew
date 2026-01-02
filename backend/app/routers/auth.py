@@ -102,7 +102,16 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """Login endpoint (alias for /token)."""
+    return await login_for_access_token(form_data, db)
+
+
+@router.post("/register")
 async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
     # Check if username exists
@@ -111,19 +120,26 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
-    
-    # Create user
+
+    # Create user with default USER role
     hashed_password = get_password_hash(user_data.password)
     user = User(
         username=user_data.username,
         password=hashed_password,
-        role=user_data.role
+        role="USER"  # Always create as USER role
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    
-    return user
+
+    return {
+        "message": "User created successfully",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "role": user.role
+        }
+    }
 
 
 @router.get("/me", response_model=UserResponse)
