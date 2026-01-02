@@ -36,6 +36,7 @@ class PositionInfo:
     unrealized_pnl: float
     leverage: int
     margin: float
+    margin_type: str  # CROSSED or ISOLATED
     liquidation_price: Optional[float] = None
     mark_price: Optional[float] = None
     notional_value: Optional[float] = None
@@ -204,6 +205,7 @@ class BinanceService:
                         unrealized_pnl=float(pos.get("unRealizedProfit", 0)),
                         leverage=int(pos.get("leverage", 1)),
                         margin=float(pos.get("isolatedMargin", 0)) if pos.get("marginType") == "isolated" else float(pos.get("notional", 0)) / int(pos.get("leverage", 1)),
+                        margin_type=pos.get("marginType", "").upper(),  # CROSSED or ISOLATED
                         liquidation_price=float(pos.get("liquidationPrice", 0)) if float(pos.get("liquidationPrice", 0)) > 0 else None,
                         mark_price=float(pos.get("markPrice", 0)),
                         notional_value=abs(float(pos.get("notional", 0)))
@@ -260,7 +262,7 @@ class BinanceService:
     def set_margin_type(self, symbol: str, margin_type: str) -> bool:
         """
         Set margin type for a symbol.
-        
+
         Args:
             symbol: Trading pair symbol
             margin_type: CROSSED or ISOLATED
@@ -274,12 +276,17 @@ class BinanceService:
             logger.info(f"Margin type set to {margin_type} for {symbol}")
             return True
         except Exception as e:
-            # Error code -4046 means margin type is already set (safe to ignore)
+            # Error code -4046 means margin type is already set or cannot be changed
             if "-4046" in str(e) or "No need to change margin type" in str(e):
-                logger.info(f"Margin type already set to {margin_type} for {symbol}")
+                # This means the margin type is already set and there may be existing positions
+                # We cannot determine the actual current margin type from the error alone
+                logger.warning(
+                    f"Cannot change margin type to {margin_type} for {symbol}. "
+                    f"Reason: Margin type is already set (possibly due to existing position). "
+                    f"To use {margin_type} margin, close all existing {symbol} positions first."
+                )
                 return True
             # Error code -4067 means there are open orders preventing margin type change
-            # This is also safe to ignore as we'll proceed with existing margin type
             if "-4067" in str(e) or "Position side cannot be changed" in str(e):
                 logger.warning(f"Cannot change margin type for {symbol} due to open orders. Proceeding with existing margin type.")
                 return True
@@ -772,11 +779,25 @@ class BinanceService:
         try:
             # Step 0: Check for existing open position to prevent duplicates
             existing_position = self.get_position_for_symbol(symbol)
-            if existing_position and abs(existing_position.position_amt) > 0:
+            if existing_position and existing_position.quantity > 0:
+                # Check if existing position has different margin type
+                if existing_position.margin_type != margin_type:
+                    error_msg = (
+                        f"Cannot open {margin_type} position for {symbol}. "
+                        f"Existing {existing_position.margin_type} position detected "
+                        f"({existing_position.quantity} contracts, ${existing_position.notional_value:.2f} notional). "
+                        f"Binance does not allow changing margin type with open positions. "
+                        f"Please close the existing position first, then new trades will use {margin_type} margin."
+                    )
+                    logger.error(error_msg)
+                    results["message"] = error_msg
+                    return results
+
+                # Same margin type but position exists
                 error_msg = (
                     f"Position already exists for {symbol}. "
-                    f"Current position: {existing_position.position_amt} contracts "
-                    f"(${abs(existing_position.notional):.2f} notional). "
+                    f"Current position: {existing_position.quantity} {existing_position.side} contracts "
+                    f"(${existing_position.notional_value:.2f} notional, {existing_position.margin_type} margin). "
                     f"Close existing position before opening a new one."
                 )
                 logger.warning(error_msg)
@@ -787,7 +808,7 @@ class BinanceService:
             if not self.set_leverage(symbol, leverage):
                 results["message"] = "Failed to set leverage"
                 return results
-            
+
             # Step 2: Set margin type
             self.set_margin_type(symbol, margin_type)
             
