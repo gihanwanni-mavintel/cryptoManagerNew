@@ -229,9 +229,9 @@ class TradeService:
                 position_size_usd=float(config.max_position_size),
                 leverage=int(config.max_leverage),
                 margin_type=config.margin_mode,
-                entry_price=signal.entry,
-                stop_loss=signal.stop_loss,
-                take_profit=signal.take_profit
+                entry_price=float(signal.entry),
+                stop_loss=float(signal.stop_loss),
+                take_profit=float(signal.take_profit)
             )
 
             # Only create trade record if Binance order was successful
