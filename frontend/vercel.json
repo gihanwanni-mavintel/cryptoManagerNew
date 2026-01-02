@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend-domain.com/api/:path*"
+      "destination": "https://api.maverickcryptomanager.site/api/:path*"
     }
   ]
 }
