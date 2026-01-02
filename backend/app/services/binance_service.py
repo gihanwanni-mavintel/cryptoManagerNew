@@ -408,10 +408,9 @@ class BinanceService:
             quantity_precision = 3  # Default
             for filter in symbol_info.get("filters", []):
                 if filter["filterType"] == "LOT_SIZE":
-                    step_size = float(filter["stepSize"])
-                    # Use Decimal to handle scientific notation properly
-                    # e.g., 1e-8 should give precision of 8, not 3
-                    step_decimal = Decimal(str(step_size))
+                    # Use original string value to avoid float conversion issues
+                    # e.g., stepSize="1" should give 0 decimals, not 1
+                    step_decimal = Decimal(filter["stepSize"])
                     quantity_precision = abs(step_decimal.as_tuple().exponent)
                     break
 
@@ -507,12 +506,11 @@ class BinanceService:
             if symbol_info:
                 for filter in symbol_info.get("filters", []):
                     if filter["filterType"] == "PRICE_FILTER":
-                        tick_size = float(filter["tickSize"])
-                        # Use Decimal to handle scientific notation properly
-                        tick_decimal = Decimal(str(tick_size))
+                        # Use original string value to avoid float conversion issues
+                        tick_decimal = Decimal(filter["tickSize"])
                         price_precision = abs(tick_decimal.as_tuple().exponent)
                         break
-            
+
             # Round price to symbol precision
             formatted_price = round(price, price_precision)
             
@@ -577,9 +575,8 @@ class BinanceService:
             if symbol_info:
                 for filter in symbol_info.get("filters", []):
                     if filter["filterType"] == "PRICE_FILTER":
-                        tick_size = float(filter["tickSize"])
-                        # Use Decimal to handle scientific notation properly
-                        tick_decimal = Decimal(str(tick_size))
+                        # Use original string value to avoid float conversion issues
+                        tick_decimal = Decimal(filter["tickSize"])
                         price_precision = abs(tick_decimal.as_tuple().exponent)
                         break
 
@@ -662,9 +659,8 @@ class BinanceService:
             if symbol_info:
                 for filter in symbol_info.get("filters", []):
                     if filter["filterType"] == "PRICE_FILTER":
-                        tick_size = float(filter["tickSize"])
-                        # Use Decimal to handle scientific notation properly
-                        tick_decimal = Decimal(str(tick_size))
+                        # Use original string value to avoid float conversion issues
+                        tick_decimal = Decimal(filter["tickSize"])
                         price_precision = abs(tick_decimal.as_tuple().exponent)
                         break
 
