@@ -80,7 +80,8 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "https://localhost:3000",
-        "*",  # Allow all for development
+        "https://crypto-manager-new.vercel.app",
+        "http://crypto-manager-new.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
